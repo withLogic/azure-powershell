@@ -1,10 +1,8 @@
 [CmdletBinding(DefaultParameterSetName="AllSet")]
 param (
-    [int]$MaxParallelJobs = 3
+    [int]$MaxParallelJobs = 3,
+    [string[]]$ChangedFiles
 )
-
-$base = git merge-base HEAD origin/main
-$changedFiles = git diff --name-only $base HEAD
 
 $autorestFolders = @{}
 
@@ -19,7 +17,7 @@ foreach ($file in $changedFiles) {
 }
 
 $subModules = $autorestFolders.Keys
-
+Write-Host "Outer Group ${subModules}:"
 
 function Split-List {
     param (
@@ -61,5 +59,7 @@ foreach ($subModules in $devidedSubModules) {
     $index++
 }
 
-$MatrixStr=$MatrixStr.Substring(1)
+if ($MatrixStr -and $MatrixStr.Length -gt 1) {
+    $MatrixStr = $MatrixStr.Substring(1)
+}
 Write-Host "##vso[task.setVariable variable=analyzeTargets;isOutput=true]{$MatrixStr}"

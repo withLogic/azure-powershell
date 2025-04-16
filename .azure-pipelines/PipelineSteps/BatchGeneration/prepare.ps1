@@ -77,5 +77,7 @@ foreach ($subModules in $devidedSubModules) {
     $index++
 }
 
-$MatrixStr=$MatrixStr.Substring(1)
+if ($MatrixStr -and $MatrixStr.Length -gt 1) {
+    $MatrixStr = $MatrixStr.Substring(1)
+}
 Write-Host "##vso[task.setVariable variable=buildTargets;isOutput=true]{$MatrixStr}"
