@@ -1,38 +1,25 @@
 [CmdletBinding(DefaultParameterSetName="AllSet")]
 param (
-    [string]$RepoRoot,
     [int]$MaxParallelJobs = 3
 )
 
-$moduleRoot = Join-Path $RepoRoot 'src'
-$subModules = @()
+$base = git merge-base HEAD origin/main
+$changedFiles = git diff --name-only $base HEAD
 
-Get-ChildItem -Path $moduleRoot -Directory | ForEach-Object {
-    $module = $_
-    Get-ChildItem -Path $module.FullName -Directory | Where-Object {
-        $_.Name -like '*.autorest'
-    } | ForEach-Object {
-        $sub_module = $_
-        $subModules += ,@($module.Name, $sub_module.Name)
+$autorestFolders = @{}
+
+foreach ($file in $changedFiles) {
+    if ($file -match '^(src|generated)/([^/]+)/([^/]+\.autorest)/') {
+        $parent = $Matches[2]
+        $child = $Matches[3]
+        $key = "$parent/$child"
+
+        $autorestFolders[$key] = $true
     }
 }
 
-$subModules = @(
-    # V3
-    @("Cdn","Cdn.Autorest"),
-    @("ImageBuilder", "ImageBuilder.Autorest"),
+$subModules = $autorestFolders.Keys
 
-    # V4
-    @("Chaos", "Chaos.Autorest"),
-    @("DeviceRegistry", "DeviceRegistry.Autorest"),
-    @("Astro", "Astro.Autorest"),
-    
-    # V4 Multi sub-modules
-    @("Communication","EmailService.Autorest"),
-    @("Communication", "EmailServicedata.Autorest")
-)
-
-Write-Host "Total matched sub modules: $($subModules.Count)"
 
 function Split-List {
     param (
@@ -59,8 +46,6 @@ function Split-List {
 
 $devidedSubModules = Split-List -subModules $subModules -maxParallelJobs $MaxParallelJobs
 
-Write-Host "Total matched devides: $($devidedSubModules.Count)"
-
 $index = 0
 foreach ($subModules in $devidedSubModules) {
     Write-Host "Outer Group ${index}:"
@@ -70,12 +55,11 @@ foreach ($subModules in $devidedSubModules) {
         $subIndex++
     }
 
-    $moduleNames = $subModules | ForEach-Object { $_[0] }
-    $moduleNamesStr = $moduleNames -join ','
+    $moduleNamesStr = $subModules -join ','
     $key = ($index + 1).ToString() + "-" + $subModules.Count
     $MatrixStr = "$MatrixStr,'$key':{'Target':'$moduleNamesStr','MatrixKey':'$key'}"
     $index++
 }
 
 $MatrixStr=$MatrixStr.Substring(1)
-Write-Host "##vso[task.setVariable variable=buildTargets;isOutput=true]{$MatrixStr}"
+Write-Host "##vso[task.setVariable variable=analyzeTargets;isOutput=true]{$MatrixStr}"
