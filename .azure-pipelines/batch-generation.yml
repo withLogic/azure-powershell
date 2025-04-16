@@ -165,7 +165,8 @@ jobs:
         git commit -m "Apply matrix job patches to ${{ variables.GenerationBranch }}"
         git push origin "${{ variables.GenerationBranch }}"
 
-        git checkout $(Build.SourceBranch)
+        $sourceBranchName = "$(Build.SourceBranch)".Replace('refs/heads/', '')
+        git checkout $sourceBranchName
 
         $filterModulesPath = Join-Path "$(Build.SourcesDirectory)" '.azure-pipelines' 'PipelineSteps' 'BatchGeneration' 'filter.ps1'
         & $filterModulesPath -MaxParallelJobs "${{ variables.MaxParalleAnalyzeJobs }}"
